@@ -4,8 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -26,13 +26,17 @@ import com.stripe.android.TokenCallback;
 import com.stripe.android.model.Source;
 import com.stripe.android.model.SourceParams;
 import com.stripe.android.model.Token;
+import com.stripe.android.model.PaymentMethod;
+import com.stripe.android.model.PaymentMethodCreateParams;
 
 import static com.gettipsi.stripe.Errors.*;
+import static com.gettipsi.stripe.util.Converters.convertPaymentMethodToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertSourceToWritableMap;
 import static com.gettipsi.stripe.util.Converters.convertTokenToWritableMap;
 import static com.gettipsi.stripe.util.Converters.createBankAccount;
 import static com.gettipsi.stripe.util.Converters.createCard;
 import static com.gettipsi.stripe.util.Converters.getStringOrNull;
+import static com.gettipsi.stripe.util.Converters.createPaymentMethodCard;
 import static com.gettipsi.stripe.util.InitializationOptions.ANDROID_PAY_MODE_KEY;
 import static com.gettipsi.stripe.util.InitializationOptions.ANDROID_PAY_MODE_PRODUCTION;
 import static com.gettipsi.stripe.util.InitializationOptions.ANDROID_PAY_MODE_TEST;
@@ -188,6 +192,28 @@ public class StripeModule extends ReactContextBaseJavaModule {
     } catch (Exception e) {
       promise.reject(toErrorCode(e), e.getMessage());
     }
+  }
+
+  @ReactMethod
+  public void createPaymentMethodWithCard(final ReadableMap cardData, final Promise promise) {
+    new AsyncTask<Void, Void, Void>() {
+      @Override
+      protected Void doInBackground(Void... voids) {
+        ArgCheck.nonNull(mStripe);
+        ArgCheck.notEmptyString(mPublicKey);
+
+        try {
+          PaymentMethod paymentMethod = mStripe.createPaymentMethodSynchronous(
+                  PaymentMethodCreateParams.create(createPaymentMethodCard(cardData), null),
+                  mPublicKey);
+          promise.resolve(convertPaymentMethodToWritableMap(paymentMethod));
+        } catch (Exception e) {
+          promise.reject(toErrorCode(e), e.getMessage());
+        }
+
+        return null;
+      }
+    }.execute();
   }
 
   @ReactMethod

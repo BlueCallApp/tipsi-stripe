@@ -1,7 +1,7 @@
 package com.gettipsi.stripe.util;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 
 import com.facebook.react.bridge.Arguments;
@@ -22,6 +22,8 @@ import com.stripe.android.model.SourceOwner;
 import com.stripe.android.model.SourceReceiver;
 import com.stripe.android.model.SourceRedirect;
 import com.stripe.android.model.Token;
+import com.stripe.android.model.PaymentMethod;
+import com.stripe.android.model.PaymentMethodCreateParams;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,6 +55,22 @@ public class Converters {
     return newToken;
   }
 
+  public static WritableMap convertPaymentMethodToWritableMap(PaymentMethod paymentMethod) {
+    WritableMap newToken = Arguments.createMap();
+
+    if (paymentMethod == null) return newToken;
+
+    newToken.putString("tokenId", paymentMethod.id);
+    newToken.putBoolean("livemode", paymentMethod.liveMode);
+    newToken.putDouble("created", paymentMethod.created);
+
+    if (paymentMethod.card != null) {
+      newToken.putMap("card", convertPaymentMethodCardToWritableMap(paymentMethod.card));
+    }
+
+    return newToken;
+  }
+
   public static WritableMap putExtraToTokenMap(final WritableMap tokenMap, UserAddress billingAddress, UserAddress shippingAddress, String emailAddress) {
     ArgCheck.nonNull(tokenMap);
 
@@ -64,11 +82,11 @@ public class Converters {
 
     billingContactMap.putString("emailAddress", emailAddress);
     shippingContactMap.putString("emailAddress", emailAddress);
-    
+
 
     extra.putMap("billingContact", billingContactMap);
     extra.putMap("shippingContact", shippingContactMap);
-    
+
     tokenMap.putMap("extra", extra);
 
     return tokenMap;
@@ -97,6 +115,21 @@ public class Converters {
     result.putString("fingerprint", card.getFingerprint() );
     result.putString("country", card.getCountry() );
     result.putString("currency", card.getCurrency() );
+
+    return result;
+  }
+
+  private static WritableMap convertPaymentMethodCardToWritableMap(final PaymentMethod.Card card) {
+    WritableMap result = Arguments.createMap();
+
+    if (card == null) return result;
+
+    result.putInt("expMonth", card.expiryMonth);
+    result.putInt("expYear", card.expiryYear);
+    result.putString("last4", card.last4);
+    result.putString("brand", card.brand);
+    result.putString("funding", card.funding);
+    result.putString("country", card.country);
 
     return result;
   }
@@ -179,31 +212,22 @@ public class Converters {
   }
 
   public static Card createCard(final ReadableMap cardData) {
-    return new Card(
-      // required fields
-      cardData.getString("number"),
-      cardData.getInt("expMonth"),
-      cardData.getInt("expYear"),
-      // additional fields
-      getValue(cardData, "cvc"),
-      getValue(cardData, "name"),
-      getValue(cardData, "addressLine1"),
-      getValue(cardData, "addressLine2"),
-      getValue(cardData, "addressCity"),
-      getValue(cardData, "addressState"),
-      getValue(cardData, "addressZip"),
-      getValue(cardData, "addressCountry"),
-      getValue(cardData, "brand"),
-      getValue(cardData, "last4"),
-      getValue(cardData, "fingerprint"),
-      getValue(cardData, "funding"),
-      getValue(cardData, "country"),
-      getValue(cardData, "currency"),
-      getValue(cardData, "id")
-    );
+    return new Card.Builder(
+            cardData.getString("number"),
+            cardData.getInt("expMonth"),
+            cardData.getInt("expYear"),
+            getValue(cardData, "cvc"))
+            .build();
   }
 
-
+  public static PaymentMethodCreateParams.Card createPaymentMethodCard(final ReadableMap cardData) {
+    return new PaymentMethodCreateParams.Card.Builder()
+            .setNumber(cardData.getString("number"))
+            .setExpiryMonth(cardData.getInt("expMonth"))
+            .setExpiryYear( cardData.getInt("expYear"))
+            .setCvc(cardData.getString("cvc"))
+            .build();
+  }
 
   @NonNull
   public static WritableMap convertSourceToWritableMap(@Nullable Source source) {
@@ -397,8 +421,8 @@ public class Converters {
       accountData.getString("currency"),
       getValue(accountData, "routingNumber", "")
     );
-    account.setAccountHolderName(getValue(accountData, "accountHolderName"));
-    account.setAccountHolderType(getValue(accountData, "accountHolderType"));
+    // account.setAccountHolderName(getValue(accountData, "accountHolderName"));
+    // account.setAccountHolderType(getValue(accountData, "accountHolderType"));
 
     return account;
   }
